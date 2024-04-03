@@ -1,24 +1,27 @@
-import json
+import os
+from json import dumps
 import threading
-import requests
 from enum import Enum
 from queue import Queue
-from time import sleep
-from logging import exception
+from sys import exc_info
+from traceback import format_exc
+from platform import node
+from time import time
+from requests import post
 
 
 class LogLevels(Enum):
-    DEBUG = 'DEBUG'
-    INFO = 'INFO'
-    WARN = 'WARN'
-    ERROR = 'ERROR'
-    FATAL = 'FATAL'
-    EXCEPTION = 'EXCEPTION'
+    DEBUG = 0
+    INFO = 1
+    WARN = 2
+    ERROR = 3
+    FATAL = 4
+    EXCEPTION = 5
 
 
 class Queues(Enum):
     LOGS = 'logs'
-    PERFORMANCES = 'performances'
+    PERFORMANCES = 'perf'
 
 
 class Servers(Enum):
@@ -38,32 +41,28 @@ class PendingLog:
 
 
 class LogObject:
-    def __init__(self, level, hostname, content, correlation=None, parameters=None, label=None, duration=None):
+    def __init__(self, level=None, content=None, hostname=None, correlation=None, params=None, label=None, duration=None):
         self.level = level
-        self.hostname = hostname
         self.content = content
+        self.hostname = hostname
         self.correlation = correlation
-        self.parameters = parameters
+        self.params = params
         self.label = label
         self.duration = duration
 
     def to_string(self):
-        return json.dumps(self.__dict__)
+        return dumps(self.__dict__)
 
 
 class PerformanceCounter:
     def __init__(self, log_flake, label):
-        self.log_flake = log_flake
+        self.instance = log_flake
         self.label = label
-        self.start_time = None
-
-    def __enter__(self):
         self.start_time = time()
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.start_time is not None:
-            duration = time() - self.start_time
-            self.log_flake.send_performance(self.label, duration)
+    def stop(self):
+        duration = time() - self.start_time
+        self.instance.send_performance(self.label, duration)
 
 
 class LogFlake:
@@ -72,17 +71,15 @@ class LogFlake:
             raise LogFlakeException("appId missing")
 
         self.server = log_flake_server.rstrip('/')
-        self._hostname = None
+        self._hostname = node()
         self.app_id = app_id
-
         self._logs_queue = Queue()
         self._process_logs = threading.Event()
-        self._logs_processor_thread = threading.Thread(target=self._logs_processor)
-        self._logs_processor_thread.start()
-
         self.failed_post_retries = 3
         self.post_timeout_seconds = 3
         self.is_shutting_down = False
+        self._logs_processor_thread = threading.Thread(target=self._logs_processor)
+        self._logs_processor_thread.start()
 
     def __del__(self):
         self.shutdown()
@@ -92,7 +89,7 @@ class LogFlake:
         self._logs_processor_thread.join()
 
     def _logs_processor(self):
-        self.send_log(LogLevels.DEBUG, f"LogFlake started on {self.get_hostname()}")
+        self.send_log(level=LogLevels.DEBUG, correlation=None, content=f"LogFlake started on {self.get_hostname()}")
         self._process_logs.wait()
 
         while not self._logs_queue.empty():
@@ -104,8 +101,11 @@ class LogFlake:
                 self._logs_queue.put(log)
 
             self._process_logs.clear()
-            if self._logs_queue.empty() and not self.is_shutting_down:
-                self._process_logs.wait()
+            if self._logs_queue.empty():
+                if self.is_shutting_down:
+                    break
+                else:
+                    self._process_logs.wait()
 
     def _post(self, queue_name, json_string):
         if queue_name not in (Queues.LOGS.value, Queues.PERFORMANCES.value):
@@ -114,52 +114,42 @@ class LogFlake:
         try:
             url = f"{self.server}/api/ingestion/{self.app_id}/{queue_name}"
             headers = {'Content-Type': 'application/json'}
-            response = requests.post(url, data=json_string, headers=headers, timeout=self.post_timeout_seconds)
+            response = post(url, data=json_string, headers=headers, timeout=self.post_timeout_seconds)
             return response.status_code == 200
-        except Exception:
+        except:
             return False
 
-    def send_log(self, content, parameters=None):
-        self.send_log(LogLevels.DEBUG, content, parameters)
-
-    def send_log(self, level, content, parameters=None):
-        self.send_log(level, None, content, parameters)
-
-    def send_log(self, level, correlation, content, parameters=None):
-        log_object = LogObject(
+    def send_log(self, level, correlation, content, params=None):
+        obj = LogObject(
             level=level.value,
             hostname=self.get_hostname(),
             content=content,
             correlation=correlation,
-            parameters=parameters
+            params=params
         )
-        json_string = log_object.to_string()
+        json_string = obj.to_string()
 
         self._logs_queue.put(PendingLog(Queues.LOGS.value, json_string))
         self._process_logs.set()
 
-    def send_exception(self, exception, correlation=None):
-        additional_trace = ""
-        if exception.data:
-            additional_trace = f"{Environment.NewLine}Data:{Environment.NewLine}{json.dumps(exception.data, indent=2)}"
-
-        log_object = LogObject(
+    def send_exception(self, correlation=None):
+        obj = LogObject(
             level=LogLevels.EXCEPTION.value,
             hostname=self.get_hostname(),
-            content=f"{exception}{additional_trace}",
+            content=f"{exc_info()[1]}{os.linesep}{format_exc()}",
             correlation=correlation
         )
-        json_string = log_object.to_string()
+        json_string = obj.to_string()
 
         self._logs_queue.put(PendingLog(Queues.LOGS.value, json_string))
         self._process_logs.set()
 
     def send_performance(self, label, duration):
-        log_object = LogObject(
+        obj = LogObject(
             label=label,
             duration=duration
         )
-        json_string = log_object.to_string()
+        json_string = obj.to_string()
 
         self._logs_queue.put(PendingLog(Queues.PERFORMANCES.value, json_string))
         self._process_logs.set()
@@ -171,10 +161,4 @@ class LogFlake:
         self._hostname = None if not hostname else hostname
 
     def get_hostname(self):
-        return self._hostname or Environment.MachineName
-
-
-# Esempio di utilizzo:
-log_flake = LogFlake(app_id='your_app_id', log_flake_server=Servers.PRODUCTION.value)
-log_flake.send_log(content='This is a test log')
-log_flake.send_performance(label='API_Request', duration=5)
+        return self._hostname or node()
