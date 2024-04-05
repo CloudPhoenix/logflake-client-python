@@ -68,7 +68,7 @@ class PerformanceCounter:
 
 
 class LogFlake:
-    def __init__(self, app_id, log_flake_server=Servers.PRODUCTION.value):
+    def __init__(self, app_id, log_flake_server=Servers.PRODUCTION.value, show_greeting=True):
         if not app_id:
             raise LogFlakeException("appId missing")
 
@@ -80,6 +80,7 @@ class LogFlake:
         self.failed_post_retries = 3
         self.post_timeout_seconds = 3
         self.is_shutting_down = False
+        self.show_greeting = show_greeting
         self._logs_processor_thread = threading.Thread(target=self._logs_processor)
         self._logs_processor_thread.start()
 
@@ -91,7 +92,9 @@ class LogFlake:
         self._logs_processor_thread.join()
 
     def _logs_processor(self):
-        self.send_log(level=LogLevels.DEBUG, correlation=None, content=f"LogFlake started on {self.get_hostname()}")
+        if self.show_greeting:
+            self.send_log(level=LogLevels.DEBUG, correlation=None, content=f"LogFlake started on {self.get_hostname()}")
+
         self._process_logs.wait()
 
         while not self._logs_queue.empty():
@@ -117,8 +120,6 @@ class LogFlake:
             url = f"{self.server}/api/ingestion/{self.app_id}/{queue_name}"
             headers = {'Content-Type': 'application/json'}
             response = post(url, data=json_string, headers=headers, timeout=self.post_timeout_seconds)
-            print('REQ:', json_string)
-            print('RES:', response.status_code, response.content)
             return response.status_code == 200
         except:
             return False
@@ -180,7 +181,7 @@ class LogFlakeHandler(Handler):
     def __init__(self, app_id, level=logging.INFO, server=Servers.PRODUCTION.value) -> None:
         logging.Handler.__init__(self)
         self.setLevel(level)
-        self.log_flake = LogFlake(app_id, server)
+        self.log_flake = LogFlake(app_id, server, show_greeting=False)
         self.log_level_mapping = {
             'DEBUG': LogLevels.DEBUG,
             'INFO': LogLevels.INFO,
