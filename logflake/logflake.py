@@ -1,4 +1,4 @@
-
+import logging
 import os
 import threading
 from logging import Handler
@@ -117,6 +117,8 @@ class LogFlake:
             url = f"{self.server}/api/ingestion/{self.app_id}/{queue_name}"
             headers = {'Content-Type': 'application/json'}
             response = post(url, data=json_string, headers=headers, timeout=self.post_timeout_seconds)
+            print('REQ:', json_string)
+            print('RES:', response.status_code, response.content)
             return response.status_code == 200
         except:
             return False
@@ -175,8 +177,10 @@ def is_jsonable(x):
 
 
 class LogFlakeHandler(Handler):
-    def __init(self, app_id, log_flake_server=Servers.PRODUCTION.value) -> None:
-        self.log_flake = LogFlake(app_id, log_flake_server)
+    def __init__(self, app_id, level=logging.INFO, server=Servers.PRODUCTION.value) -> None:
+        logging.Handler.__init__(self)
+        self.setLevel(level)
+        self.log_flake = LogFlake(app_id, server)
         self.log_level_mapping = {
             'DEBUG': LogLevels.DEBUG,
             'INFO': LogLevels.INFO,
@@ -193,11 +197,19 @@ class LogFlakeHandler(Handler):
             if record.exc_info:
                 self.log_flake.send_exception()
 
+            params = record.args
+            if is_jsonable(params):
+                params_json = {
+                    "args": dumps(params)
+                }
+            else:
+                params_json = None
+
             self.log_flake.send_log(
                 level=self.log_level_mapping[record.levelname],
                 content=self.format(record),
                 correlation=None,
-                params=record.args if is_jsonable(record.args) else None
+                params=params_json
             )
 
         except:
