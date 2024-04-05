@@ -1,5 +1,7 @@
+
 import os
 import threading
+from logging import Handler
 from json import dumps
 from enum import Enum
 from queue import Queue
@@ -162,3 +164,42 @@ class LogFlake:
 
     def get_hostname(self):
         return self._hostname or node()
+
+
+def is_jsonable(x):
+    try:
+        dumps(x)
+        return True
+    except:
+        return False
+
+
+class LogFlakeHandler(Handler):
+    def __init(self, app_id, log_flake_server=Servers.PRODUCTION.value) -> None:
+        self.log_flake = LogFlake(app_id, log_flake_server)
+        self.log_level_mapping = {
+            'DEBUG': LogLevels.DEBUG,
+            'INFO': LogLevels.INFO,
+            'WARNING': LogLevels.WARN,
+            'ERROR': LogLevels.ERROR,
+            'CRITICAL': LogLevels.FATAL,
+            'EXCEPTION': LogLevels.EXCEPTION
+        }
+
+    def emit(self, record):
+        try:
+            self.format(record)
+
+            if record.exc_info:
+                self.log_flake.send_exception()
+
+            self.log_flake.send_log(
+                level=self.log_level_mapping[record.levelname],
+                content=self.format(record),
+                correlation=None,
+                params=record.args if is_jsonable(record.args) else None
+            )
+
+        except:
+            self.log_flake.send_exception()
+            self.handleError(record)

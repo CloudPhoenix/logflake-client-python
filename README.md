@@ -5,10 +5,15 @@
 <h3 align="center">🏠 [LogFlake Website](https://logflake.io) |  🔥 [CloudPhoenix Website](https://cloudphoenix.it)</h3>
 
 ## Downloads
-_TBA_
+
+|                         PyPI Package Name                          |                                   Version                                   |                          Downloads                           |
+|:------------------------------------------------------------------:|:---------------------------------------------------------------------------:|:------------------------------------------------------------:|
+| [LogFlake.Client.Python](https://pypi.org/project/logflake/1.0.0/) |          ![PyPI - Version](https://img.shields.io/pypi/v/logflake)          | ![PyPI - Downloads](https://img.shields.io/pypi/dm/logflake) |
 
 ## Usage
+
 Retrieve your _application-key_ from Application Settings in LogFlake UI.
+
 ```python
 from logflake import logflake
 
