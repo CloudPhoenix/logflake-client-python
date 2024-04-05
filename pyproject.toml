@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69.2.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logflake"
+version = "1.0.0"
+description = "LogFlake Python Client"
+readme = "README.md"
+authors = [{ name = "CloudPhoenix Srl", email = "info@cloudphoenix.it" }]
+keywords = ["logflake"]
+dependencies = [
+    "requests"
+]
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/CloudPhoenix/logflake-client-python"
+
+[project.optional-dependencies]
+dev = ["pip-tools"]

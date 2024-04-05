@@ -1,6 +1,6 @@
 import os
-from json import dumps
 import threading
+from json import dumps
 from enum import Enum
 from queue import Queue
 from sys import exc_info
