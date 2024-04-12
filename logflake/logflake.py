@@ -1,6 +1,8 @@
 import logging
 import os
 import threading
+import snappy
+from base64 import b64encode
 from logging import Handler
 from json import dumps
 from enum import Enum
@@ -79,6 +81,7 @@ class LogFlake:
         self._process_logs = threading.Event()
         self.failed_post_retries = 3
         self.post_timeout_seconds = 3
+        self.enable_compression = True
         self.is_shutting_down = False
         self.show_greeting = show_greeting
         self._logs_processor_thread = threading.Thread(target=self._logs_processor)
@@ -119,7 +122,12 @@ class LogFlake:
         try:
             url = f"{self.server}/api/ingestion/{self.app_id}/{queue_name}"
             headers = {'Content-Type': 'application/json'}
-            response = post(url, data=json_string, headers=headers, timeout=self.post_timeout_seconds)
+            body = json_string
+            if self.enable_compression:
+                headers = {'Content-Type': 'application/octet-stream'}
+                encoded = b64encode(json_string.encode()).decode()
+                body = snappy.compress(encoded, "utf-8")
+            response = post(url, data=body, headers=headers, timeout=self.post_timeout_seconds)
             return response.status_code == 200
         except:
             return False

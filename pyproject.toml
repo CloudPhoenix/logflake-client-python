@@ -10,7 +10,8 @@ readme = "README.md"
 authors = [{ name = "CloudPhoenix Srl", email = "info@cloudphoenix.it" }]
 keywords = ["logflake"]
 dependencies = [
-    "requests"
+    "requests",
+    "snappy"
 ]
 requires-python = ">=3.8"
 
