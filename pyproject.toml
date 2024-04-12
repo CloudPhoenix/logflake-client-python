@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "logflake"
-version = "1.2.0"
+version = "1.2.1"
 description = "LogFlake Python Client"
 readme = "README.md"
 authors = [{ name = "CloudPhoenix Srl", email = "info@cloudphoenix.it" }]
