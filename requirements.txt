@@ -65,7 +65,7 @@ pyproject-hooks==1.0.0
     # via
     #   build
     #   pip-tools
-requests==2.31.0
+requests==2.32.0
     # via logflake (pyproject.toml)
 six==1.16.0
     # via asttokens
