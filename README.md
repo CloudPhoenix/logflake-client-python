@@ -2,7 +2,7 @@
 
 > This repository contains the sources for the client-side components of the LogFlake product suite for applications logs and performance collection for Python applications.
 
-<h3 align="center">🏠 [LogFlake Website](https://logflake.io) |  🔥 [CloudPhoenix Website](https://cloudphoenix.it)</h3>
+<h3 align="center">🏠 <a href="https://logflake.io">LogFlake Website</a> |  🔥 <a href="https://cloudphoenix.it">CloudPhoenix Website</a></h3>
 
 ## Downloads
 
