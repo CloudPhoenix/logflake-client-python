@@ -1,3 +1,10 @@
+> [!WARNING]
+> **This project has been discontinued.**
+>
+> LogFlake was decommissioned in August 2026. This repository is archived and read-only:
+> it receives no further development, bug fixes or security updates.
+> The published package is deprecated — please do not use it in new projects.
+
 <h1 align="center">LogFlake Client Python</h1>
 
 > This repository contains the sources for the client-side components of the LogFlake product suite for applications logs and performance collection for Python applications.
